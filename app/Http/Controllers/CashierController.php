@@ -44,34 +44,27 @@ class CashierController extends Controller
     private function createOrder($request)
     {
         try {
-            // Inisialisasi variabel total_price
-            $totalPrice = 0;
-
-            // Buat semua OrderProduct terlebih dahulu
-            $orderProducts = [];
-            foreach (json_decode($request->order_items, true) as $item) {
-                $orderProduct = OrderProduct::create([
-                    'code_order' => 'ORDER-' . time(), // Ganti ini sesuai kebutuhan
-                    'product_id' => $item['id'],
-                    'quantity' => $item['quantity'],
-                    'price' => $item['price']
-                ]);
-                $orderProducts[] = $orderProduct;
-                $totalPrice += $item['price'] * $item['quantity']; // Hitung total_price dari semua OrderProduct
-                Log::info('Order Product Created: ', $orderProduct->toArray());
-            }
-
-            // Buat Order setelah semua OrderProduct berhasil dibuat
+            // Buat Order terlebih dahulu
             $order = new Order();
-            $order->order_product_id = $orderProducts[0]->id; // Contoh pengaturan order_product_id, sesuaikan dengan kebutuhan Anda
-            $order->code_order = 'ORDER-' . time(); // Set nilai code_order secara otomatis
+            $order->code_order = 'ORDER-' . time(); // Generate unique code_order
             $order->user_id = auth()->id();
             $order->customer = $request->customer;
-            $order->total_price = $totalPrice;
+            $order->total_price = $request->grand_total;
             $order->status = 'completed';
             $order->save();
 
             Log::info('Order Created: ', $order->toArray());
+
+            // Buat OrderProduct setelah Order berhasil dibuat
+            foreach (json_decode($request->order_items, true) as $item) {
+                $orderProduct = OrderProduct::create([
+                    'order_id' => $order->id, // Gunakan order_id dari order yang baru dibuat
+                    'product_id' => $item['id'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price']
+                ]);
+                Log::info('Order Product Created: ', $orderProduct->toArray());
+            }
 
             return $order;
         } catch (\Exception $e) {
