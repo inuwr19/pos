@@ -10,6 +10,12 @@
     <link rel="stylesheet" href="{{ asset('adminlte/plugins/fontawesome-free/css/all.min.css') }}">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
+    <style>
+        .custom-product-img {
+            max-width: 100px; /* Atur ukuran maksimum gambar sesuai keinginan */
+            height: auto; /* Jaga aspek rasio gambar */
+        }
+    </style>
 </head>
 <body class="hold-transition sidebar-mini">
     <div class="wrapper">

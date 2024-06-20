@@ -15,8 +15,7 @@
         <!-- Sidebar Menu -->
         <nav class="mt-2">
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
-                <!-- Add icons to the links using the .nav-icon class
-                     with font-awesome or any other icon font library -->
+                <!-- Add icons to the links using the .nav-icon class with font-awesome or any other icon font library -->
                 <li class="nav-item">
                     <a href="{{ route('dashboard') }}" class="nav-link">
                         <i class="nav-icon fas fa-tachometer-alt"></i>
@@ -24,17 +23,31 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('cashier.index') }}" class="nav-link">
+                    {{-- <a href="{{ route('orders.index') }}" class="nav-link"> --}}
+                        <i class="nav-icon fas fa-receipt"></i>
+                        <p>Cashier</p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     {{-- <a href="{{ route('products.index') }}" class="nav-link"> --}}
-                    <a href="{{ route('dashboard') }}" class="nav-link">
+                    <a href="{{ route('productIndex') }}" class="nav-link">
                         <i class="nav-icon fas fa-coffee"></i>
                         <p>Products</p>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('dashboard') }}" class="nav-link">
+                    <a href="{{ route('orderIndex') }}" class="nav-link">
                     {{-- <a href="{{ route('orders.index') }}" class="nav-link"> --}}
                         <i class="nav-icon fas fa-receipt"></i>
                         <p>Orders</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('orderProductIndex') }}" class="nav-link">
+                    {{-- <a href="{{ route('orders.index') }}" class="nav-link"> --}}
+                        <i class="nav-icon fas fa-receipt"></i>
+                        <p>Orders Product</p>
                     </a>
                 </li>
                 <!-- Tambahkan menu lainnya di sini -->
