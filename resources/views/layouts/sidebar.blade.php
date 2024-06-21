@@ -25,31 +25,32 @@
                 <li class="nav-item">
                     <a href="{{ route('cashier.index') }}" class="nav-link">
                     {{-- <a href="{{ route('orders.index') }}" class="nav-link"> --}}
-                        <i class="nav-icon fas fa-receipt"></i>
+                        {{-- <i class="nav-icon fas fa-receipt"></i> --}}
+                        <i class="nav-icon fas fa-solid fa-cash-register"></i>
                         <p>Cashier</p>
                     </a>
                 </li>
                 <li class="nav-item">
                     {{-- <a href="{{ route('products.index') }}" class="nav-link"> --}}
-                    <a href="{{ route('productIndex') }}" class="nav-link">
+                    <a href="{{ route('products.index') }}" class="nav-link">
                         <i class="nav-icon fas fa-coffee"></i>
                         <p>Products</p>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('orderIndex') }}" class="nav-link">
+                    <a href="{{ route('orders.index') }}" class="nav-link">
                     {{-- <a href="{{ route('orders.index') }}" class="nav-link"> --}}
                         <i class="nav-icon fas fa-receipt"></i>
                         <p>Orders</p>
                     </a>
                 </li>
-                <li class="nav-item">
+                {{-- <li class="nav-item">
                     <a href="{{ route('orderProductIndex') }}" class="nav-link">
-                    {{-- <a href="{{ route('orders.index') }}" class="nav-link"> --}}
+                    <a href="{{ route('orders.index') }}" class="nav-link">
                         <i class="nav-icon fas fa-receipt"></i>
                         <p>Orders Product</p>
                     </a>
-                </li>
+                </li> --}}
                 <!-- Tambahkan menu lainnya di sini -->
             </ul>
         </nav>

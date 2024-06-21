@@ -16,6 +16,7 @@
             height: auto; /* Jaga aspek rasio gambar */
         }
     </style>
+    <script src="https://kit.fontawesome.com/dedca05a0a.js" crossorigin="anonymous"></script>
 </head>
 <body class="hold-transition sidebar-mini">
     <div class="wrapper">

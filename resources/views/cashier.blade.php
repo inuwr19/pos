@@ -55,6 +55,7 @@
                     <div class="card-body">
                         <form id="orderForm" method="POST" action="{{ route('cashier.completeOrder') }}">
                             @csrf
+                            <input type="hidden" id="orderItemsData" name="order_items">
                             <div class="form-group">
                                 <label for="customer">Customer</label>
                                 <input type="text" class="form-control" id="customer" name="customer" value="Customer 1" required>
@@ -104,6 +105,7 @@
     </div>
 </section>
 
+<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ env('MIDTRANS_CLIENT_KEY') }}"></script>
 <script>
     let products = @json($products->flatten());
     let orderItems = [];
@@ -145,6 +147,8 @@
             `;
             orderItemsContainer.appendChild(row);
         });
+
+        document.getElementById('orderItemsData').value = JSON.stringify(orderItems);
     }
 
     function updateQuantity(productId, quantity) {
@@ -167,7 +171,6 @@
         document.getElementById('grandTotal').value = grandTotal; // Simpan nilai numerik
         document.getElementById('grandTotalDisplay').value = `Rp${grandTotal.toLocaleString()}`; // Tampilan untuk pengguna
     }
-
 
     function toggleCashInput(paymentMethod) {
         let cashPaymentDiv = document.getElementById('cashPayment');
@@ -195,34 +198,52 @@
         formData.append('order_items', JSON.stringify(orderItems));
 
         let paymentMethod = document.getElementById('paymentMethod').value;
-        console.log([...formData]); // Debug log
 
         if (paymentMethod === 'non_cash') {
             // Initiate Midtrans payment
             fetch('{{ route('cashier.completeOrder') }}', {
                 method: 'POST',
-                body: formData
+                body: formData,
             })
             .then(response => response.json())
             .then(data => {
-                console.log(data); // Debug log
-                if (data.redirect_url) {
-                    window.location.href = data.redirect_url;
+                if (data.snap_token) {
+                    window.snap.pay(data.snap_token, {
+                        onSuccess: function(result) {
+                            fetch('{{ route('midtrans.callback') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                },
+                                body: JSON.stringify(result),
+                            }).then(() => {
+                                alert('Payment successful!');
+                                resetOrder();
+                            });
+                        },
+                        onPending: function(result) {
+                            alert('Waiting for payment!');
+                        },
+                        onError: function(result) {
+                            alert('Payment failed!');
+                        },
+                        onClose: function() {
+                            console.log('Payment popup closed');
+                        }
+                    });
+                } else {
+                    console.error('Snap token not received', data);
                 }
             })
             .catch(error => console.error('Error:', error));
         } else {
-            // Complete order directly for cash payment
             fetch('{{ route('cashier.completeOrder') }}', {
                 method: 'POST',
-                body: formData
+                body: formData,
             })
-            .then(response => {
-                console.log(response); // Debug log
-                return response.json(); // Convert response to JSON
-            })
+            .then(response => response.json())
             .then(data => {
-                console.log(data); // Debug log
                 resetOrder();
                 alert('Order completed successfully!');
             })

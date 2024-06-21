@@ -7,17 +7,25 @@ use App\Models\OrderProduct;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Midtrans\Config;
+use Midtrans\Snap;
 
 class CashierController extends Controller
 {
     public function index()
     {
-        // Get products grouped by category
         $products = Product::all()->groupBy('category');
         return view('cashier', compact('products'));
     }
+
     public function completeOrder(Request $request)
     {
+        // Set konfigurasi Midtrans
+        \Midtrans\Config::$serverKey = config('midtrans.server_key');
+        \Midtrans\Config::$isProduction = config('midtrans.is_production');
+        \Midtrans\Config::$isSanitized = config('midtrans.is_sanitized');
+        \Midtrans\Config::$is3ds = config('midtrans.is_3ds');
+
         Log::info('Complete Order Request: ', $request->all());
 
         $request->validate([
@@ -27,38 +35,41 @@ class CashierController extends Controller
         ]);
 
         if ($request->payment_method === 'cash') {
-            // Handle cash payment
             $order = $this->createOrder($request);
             if ($order) {
+                $order->status = 'completed';
+                $order->save();
                 return redirect()->route('cashier.index')->with('success', 'Order completed successfully!');
             } else {
                 return redirect()->route('cashier.index')->with('error', 'Order failed to complete!');
             }
         } else if ($request->payment_method === 'non_cash') {
-            // Handle non-cash payment via Midtrans
-            $response = $this->initiateMidtransPayment($request);
-            return response()->json($response);
+            $order = $this->createOrder($request, false);
+            if ($order) {
+                $response = $this->initiateMidtransPayment($order, $request);
+                return response()->json($response);
+            } else {
+                return response()->json(['error' => 'Order creation failed!'], 500);
+            }
         }
     }
 
-    private function createOrder($request)
+    private function createOrder($request, $completed = true)
     {
         try {
-            // Buat Order terlebih dahulu
             $order = new Order();
-            $order->code_order = 'ORDER-' . time(); // Generate unique code_order
+            $order->code_order = 'ORDER-' . time();
             $order->user_id = auth()->id();
             $order->customer = $request->customer;
             $order->total_price = $request->grand_total;
-            $order->status = 'completed';
+            $order->status = $completed ? 'completed' : 'pending';
             $order->save();
 
             Log::info('Order Created: ', $order->toArray());
 
-            // Buat OrderProduct setelah Order berhasil dibuat
             foreach (json_decode($request->order_items, true) as $item) {
                 $orderProduct = OrderProduct::create([
-                    'order_id' => $order->id, // Gunakan order_id dari order yang baru dibuat
+                    'order_id' => $order->id,
                     'product_id' => $item['id'],
                     'quantity' => $item['quantity'],
                     'price' => $item['price']
@@ -72,19 +83,19 @@ class CashierController extends Controller
             return false;
         }
     }
-    private function initiateMidtransPayment($request)
+
+    private function initiateMidtransPayment($order, $request)
     {
-        $orderId = 'ORDER-' . time();
-        $grossAmount = $request->grand_total;
+        $grossAmount = $order->total_price;
 
         $midtransParams = [
             'transaction_details' => [
-                'order_id' => $orderId,
+                'order_id' => $order->code_order,
                 'gross_amount' => $grossAmount,
             ],
             'customer_details' => [
-                'first_name' => $request->customer,
-                'email' => 'customer@example.com', // Anda bisa mengubah ini sesuai kebutuhan
+                'first_name' => $order->customer,
+                'email' => 'customer@example.com',
             ],
             'item_details' => array_map(function ($item) {
                 return [
@@ -96,16 +107,60 @@ class CashierController extends Controller
             }, json_decode($request->order_items, true))
         ];
 
-        // Panggil Midtrans API untuk memulai pembayaran
-        \Midtrans\Config::$serverKey = 'SB-Mid-server-uafg-0TXWVx-oM2mQwTo5SGc';
-        \Midtrans\Config::$isProduction = false;
-        \Midtrans\Config::$isSanitized = true;
-        \Midtrans\Config::$is3ds = true;
-
-        $snapToken = \Midtrans\Snap::getSnapToken($midtransParams);
-
-        return [
-            'redirect_url' => "https://app.sandbox.midtrans.com/snap/v2/vtweb/{$snapToken}"
-        ];
+        try {
+            $snapToken = Snap::getSnapToken($midtransParams);
+            return ['snap_token' => $snapToken];
+        } catch (\Exception $e) {
+            Log::error('Midtrans Error: ', ['message' => $e->getMessage()]);
+            return ['error' => 'Midtrans payment initiation failed!'];
+        }
     }
+
+    public function handleMidtransNotification(Request $request)
+    {
+        try {
+            \Midtrans\Config::$serverKey = config('midtrans.server_key');
+            \Midtrans\Config::$isProduction = config('midtrans.is_production');
+            \Midtrans\Config::$isSanitized = config('midtrans.is_sanitized');
+            \Midtrans\Config::$is3ds = config('midtrans.is_3ds');
+
+            if (empty(\Midtrans\Config::$serverKey)) {
+                Log::error('Midtrans server key is not set.');
+                return response()->json(['status' => 'error', 'message' => 'Server key is not set'], 500);
+            }
+
+            $notification = new \Midtrans\Notification();
+
+            $orderId = $notification->order_id;
+            $transactionStatus = $notification->transaction_status;
+
+            Log::info('Midtrans Notification Received: ', (array)$notification);
+
+            $order = Order::where('code_order', $orderId)->first();
+
+            if ($order) {
+                switch ($transactionStatus) {
+                    case 'capture':
+                    case 'settlement':
+                        $order->status = 'completed';
+                        break;
+                    case 'pending':
+                        $order->status = 'pending';
+                        break;
+                    default:
+                        $order->status = 'failed';
+                        break;
+                }
+                $order->save();
+                return response()->json(['status' => 'success'], 200);
+            } else {
+                Log::error('Order not found for order ID: ' . $orderId);
+                return response()->json(['status' => 'failed', 'message' => 'Order not found'], 404);
+            }
+        } catch (\Exception $e) {
+            Log::error('Exception in handleMidtransNotification: ' . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
 }
