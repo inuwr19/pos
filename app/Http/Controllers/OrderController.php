@@ -8,9 +8,26 @@ use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $orders = Order::with('orderProducts.product')->get();
+        $query = Order::with('orderProducts.product');
+
+        // Filter by date
+        if ($request->has('date') && $request->date) {
+            $query->whereDate('created_at', $request->date);
+        }
+
+        // Search by customer name
+        if ($request->has('customer') && $request->customer) {
+            $query->where('customer', 'like', '%' . $request->customer . '%');
+        }
+
+        $orders = $query->get();
+
+        if ($request->ajax()) {
+            return view('partials.order_table', compact('orders'))->render();
+        }
+
         return view('order', compact('orders'));
     }
 
@@ -29,7 +46,6 @@ class OrderController extends Controller
 
     public function receipt(Order $order)
     {
-        // Optionally, you can add authentication or permission checks here
         return view('receipt', compact('order'));
     }
 }

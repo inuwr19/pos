@@ -20,41 +20,52 @@
                         <h3 class="card-title">Order List</h3>
                     </div>
                     <div class="card-body">
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Order Code</th>
-                                    <th>Customer</th>
-                                    <th>Total Price</th>
-                                    <th>Table Number</th>
-                                    <th>Status</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($orders as $order)
-                                <tr>
-                                    <td>{{ $order->code_order }}</td>
-                                    <td>{{ $order->customer }}</td>
-                                    <td>Rp{{ number_format($order->total_price, 0, ',', '.') }}</td>
-                                    <td>{{ $order->no_table }}</td>
-                                    <td>{{ $order->status }}</td>
-                                    <td>
-                                        <a href="{{ route('orders.show', $order->id) }}" class="btn btn-primary btn-sm">View</a>
-                                        <form action="{{ route('orders.destroy', $order->id) }}" method="POST" style="display:inline-block;">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                        <form id="filter-form" method="GET" action="{{ route('orders.index') }}">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="date">Date</label>
+                                        <input type="date" name="date" id="date" class="form-control" value="{{ request('date') }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="customer">Customer</label>
+                                        <input type="text" name="customer" id="customer" class="form-control" value="{{ request('customer') }}" placeholder="Search by customer">
+                                    </div>
+                                </div>
+                                <div class="col-md-3 align-self-end">
+                                    <button type="submit" class="btn btn-primary">Filter</button>
+                                    <a href="{{ route('orders.index') }}" class="btn btn-secondary">Reset</a>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div id="order-table">
+                            @include('partials.order_table', ['orders' => $orders])
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+@section('scripts')
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#date').change(function() {
+            var date = $(this).val();
+            $.ajax({
+                url: "{{ route('orders.index') }}",
+                data: {date: date},
+                success: function(data) {
+                    $('#order-table').html(data);
+                }
+            });
+        });
+    });
+</script>
+@endsection
 @endsection

@@ -23,7 +23,8 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call([
-            ProductSeeder::class, // Tambahkan baris ini
+            ProductSeeder::class, 
+            UsersTableSeeder::class,
         ]);
     }
 }

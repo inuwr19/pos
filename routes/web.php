@@ -1,10 +1,12 @@
 <?php
 
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\CashierController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\ProductController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\CashierController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\OwnerDashboardController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -14,9 +16,8 @@ Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard',[AdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/owner/dashboard', [OwnerDashboardController::class, 'index'])->middleware('auth');
 
     Route::post('/postorder', [OrderController::class, 'PostOrder'])->name('PostOrder');
     Route::resource('orders', OrderController::class);
@@ -27,4 +28,5 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/cashier/complete-order', [CashierController::class, 'completeOrder'])->name('cashier.completeOrder');
     Route::post('/midtrans/callback', [CashierController::class, 'handleMidtransNotification'])->name('midtrans.callback');
     Route::get('/cashier/printReceipt/{id}', [CashierController::class, 'printReceipt'])->name('cashier.printReceipt');
+    Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt'])->name('orders.receipt');
 });

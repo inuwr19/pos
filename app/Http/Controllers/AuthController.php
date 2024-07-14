@@ -39,6 +39,11 @@ class AuthController extends Controller
 
         if (Auth::attempt($request->only('email', 'password'))) {
             $request->session()->regenerate();
+
+            // Mengarahkan berdasarkan role
+            if (Auth::user()->role === 'owner') {
+                return redirect()->intended('owner/dashboard');
+            }
             return redirect()->intended('dashboard');
         }
 
@@ -46,6 +51,7 @@ class AuthController extends Controller
             'email' => 'The provided credentials do not match our records.',
         ]);
     }
+
 
     // Logout
     public function logout(Request $request)
