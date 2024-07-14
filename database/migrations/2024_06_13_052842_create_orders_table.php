@@ -16,7 +16,9 @@ return new class extends Migration
             $table->string('code_order')->unique();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('customer');
+            $table->string('no_table')->nullable();
             $table->bigInteger('total_price');
+            $table->enum('payment_method', ['cash', 'non_cash'])->nullable();
             $table->enum('status', ['pending', 'completed']);
             $table->timestamps();
         });

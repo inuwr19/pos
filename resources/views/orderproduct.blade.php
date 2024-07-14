@@ -25,6 +25,7 @@
                                 <p><strong>Customer:</strong> {{ $order->customer }}</p>
                                 <p><strong>Total Price:</strong> Rp{{ number_format($order->total_price, 0, ',', '.') }}</p>
                                 <p><strong>Status:</strong> {{ $order->status }}</p>
+                                <p><strong>Payment Method:</strong> {{ $order->payment_method }}</p>
                             </div>
                         </div>
                         <hr>

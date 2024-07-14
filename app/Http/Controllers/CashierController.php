@@ -31,7 +31,7 @@ class CashierController extends Controller
         $request->validate([
             'customer' => 'required|string|max:255',
             'grand_total' => 'required|numeric',
-            'payment_method' => 'required|string'
+            'payment_method' => 'required|in:cash,non_cash' // Validasi payment_method
         ]);
 
         if ($request->payment_method === 'cash') {
@@ -39,14 +39,15 @@ class CashierController extends Controller
             if ($order) {
                 $order->status = 'completed';
                 $order->save();
-                return redirect()->route('cashier.index')->with('success', 'Order completed successfully!');
+                return response()->json(['order_id' => $order->id]);
             } else {
-                return redirect()->route('cashier.index')->with('error', 'Order failed to complete!');
+                return response()->json(['error' => 'Order creation failed!'], 500);
             }
         } else if ($request->payment_method === 'non_cash') {
             $order = $this->createOrder($request, false);
             if ($order) {
                 $response = $this->initiateMidtransPayment($order, $request);
+                $response['order_id'] = $order->id;
                 return response()->json($response);
             } else {
                 return response()->json(['error' => 'Order creation failed!'], 500);
@@ -61,7 +62,9 @@ class CashierController extends Controller
             $order->code_order = 'ORDER-' . time();
             $order->user_id = auth()->id();
             $order->customer = $request->customer;
+            $order->no_table = $request->table_number; // Tambahkan nomor meja ke order
             $order->total_price = $request->grand_total;
+            $order->payment_method = $request->payment_method; // Tambahkan metode pembayaran ke order
             $order->status = $completed ? 'completed' : 'pending';
             $order->save();
 
@@ -84,35 +87,35 @@ class CashierController extends Controller
         }
     }
 
-    private function initiateMidtransPayment($order, $request)
+    public function initiateMidtransPayment($order, $request)
     {
-        $grossAmount = $order->total_price;
-
-        $midtransParams = [
+        $params = [
             'transaction_details' => [
-                'order_id' => $order->code_order,
-                'gross_amount' => $grossAmount,
+                'order_id' => $order->code_order,  // Pastikan menggunakan code_order sebagai order_id
+                'gross_amount' => $order->total_price,
             ],
             'customer_details' => [
-                'first_name' => $order->customer,
+                'first_name' => $request->customer,
                 'email' => 'customer@example.com',
             ],
-            'item_details' => array_map(function ($item) {
+            'item_details' => $order->orderProducts->map(function($orderProduct) {
                 return [
-                    'id' => $item['id'],
-                    'price' => $item['price'],
-                    'quantity' => $item['quantity'],
-                    'name' => $item['name'],
+                    'id' => $orderProduct->product_id,
+                    'price' => $orderProduct->price,
+                    'quantity' => $orderProduct->quantity,
+                    'name' => $orderProduct->product->name,
                 ];
-            }, json_decode($request->order_items, true))
+            })->toArray(),
         ];
 
+        Log::info('Midtrans Payment Params: ', $params);
+
         try {
-            $snapToken = Snap::getSnapToken($midtransParams);
+            $snapToken = \Midtrans\Snap::getSnapToken($params);
             return ['snap_token' => $snapToken];
         } catch (\Exception $e) {
-            Log::error('Midtrans Error: ', ['message' => $e->getMessage()]);
-            return ['error' => 'Midtrans payment initiation failed!'];
+            Log::error('Midtrans Error: ' . $e->getMessage());
+            return ['error' => $e->getMessage()];
         }
     }
 
@@ -136,6 +139,7 @@ class CashierController extends Controller
 
             Log::info('Midtrans Notification Received: ', (array)$notification);
 
+            // Cari order berdasarkan code_order
             $order = Order::where('code_order', $orderId)->first();
 
             if ($order) {
@@ -143,16 +147,17 @@ class CashierController extends Controller
                     case 'capture':
                     case 'settlement':
                         $order->status = 'completed';
-                        break;
+                        $order->save();
+                        return response()->json(['status' => 'success', 'receipt_url' => route('cashier.printReceipt', $order->id)], 200);
                     case 'pending':
                         $order->status = 'pending';
+                        $order->save();
                         break;
                     default:
                         $order->status = 'failed';
+                        $order->save();
                         break;
                 }
-                $order->save();
-                return response()->json(['status' => 'success'], 200);
             } else {
                 Log::error('Order not found for order ID: ' . $orderId);
                 return response()->json(['status' => 'failed', 'message' => 'Order not found'], 404);
@@ -163,4 +168,11 @@ class CashierController extends Controller
         }
     }
 
+
+    public function printReceipt($orderId)
+    {
+        $order = Order::with('orderProducts.product')->findOrFail($orderId);
+        return view('receipt', compact('order'));
+    }
 }
+

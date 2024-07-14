@@ -60,6 +60,10 @@
                                 <label for="customer">Customer</label>
                                 <input type="text" class="form-control" id="customer" name="customer" value="Customer 1" required>
                             </div>
+                            <div class="form-group">
+                                <label for="tableNumber">Table Number</label>
+                                <input type="text" class="form-control" id="tableNumber" name="table_number" required>
+                            </div>
                             <table class="table table-bordered">
                                 <thead>
                                     <tr>
@@ -105,7 +109,7 @@
     </div>
 </section>
 
-<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ env('MIDTRANS_CLIENT_KEY') }}"></script>
+<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config('midtrans.client_key') }}"></script>
 <script>
     let products = @json($products->flatten());
     let orderItems = [];
@@ -198,6 +202,7 @@
         formData.append('order_items', JSON.stringify(orderItems));
 
         let paymentMethod = document.getElementById('paymentMethod').value;
+        formData.append('payment_method', paymentMethod);
 
         if (paymentMethod === 'non_cash') {
             // Initiate Midtrans payment
@@ -220,6 +225,7 @@
                             }).then(() => {
                                 alert('Payment successful!');
                                 resetOrder();
+                                printReceipt(data.order_id); // Memanggil fungsi print receipt setelah pembayaran sukses
                             });
                         },
                         onPending: function(result) {
@@ -246,9 +252,19 @@
             .then(data => {
                 resetOrder();
                 alert('Order completed successfully!');
+                printReceipt(data.order_id); // Memanggil fungsi print receipt setelah pembayaran sukses
             })
             .catch(error => console.error('Error:', error));
         }
     });
+
+    function printReceipt(orderId) {
+        if (orderId) {
+            window.open(`{{ route('cashier.printReceipt', '') }}/${orderId}`, '_blank');
+            alert('Printing receipt...');
+        } else {
+            alert('No order to print receipt for.');
+        }
+    }
 </script>
 @endsection

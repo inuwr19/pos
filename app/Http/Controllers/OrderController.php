@@ -26,4 +26,10 @@ class OrderController extends Controller
         $order->delete();
         return redirect()->route('orders.index')->with('success', 'Order deleted successfully!');
     }
+
+    public function receipt(Order $order)
+    {
+        // Optionally, you can add authentication or permission checks here
+        return view('receipt', compact('order'));
+    }
 }
