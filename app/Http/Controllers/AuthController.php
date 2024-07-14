@@ -40,18 +40,22 @@ class AuthController extends Controller
         if (Auth::attempt($request->only('email', 'password'))) {
             $request->session()->regenerate();
 
-            // Mengarahkan berdasarkan role
-            if (Auth::user()->role === 'owner') {
-                return redirect()->intended('owner/dashboard');
+            // Arahkan ke rute yang sesuai berdasarkan peran pengguna
+            $user = Auth::user();
+            if ($user->role === 'owner') {
+                return redirect()->route('owner.dashboard');
+            } elseif ($user->role === 'admin') {
+                return redirect()->route('dashboard');
             }
-            return redirect()->intended('dashboard');
+
+            // Jika peran tidak dikenal, arahkan ke halaman default
+            return redirect('/');
         }
 
         return back()->withErrors([
             'email' => 'The provided credentials do not match our records.',
         ]);
     }
-
 
     // Logout
     public function logout(Request $request)

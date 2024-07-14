@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\Product;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 
-class OrderController extends Controller
+class OrderOwnerController extends Controller
 {
     public function index(Request $request)
     {
@@ -25,22 +25,22 @@ class OrderController extends Controller
         $orders = $query->get();
 
         if ($request->ajax()) {
-            return view('partials.order_table', compact('orders'))->render();
+            return view('owner.order_table', compact('orders'))->render();
         }
 
-        return view('order', compact('orders'));
+        return view('owner.order', compact('orders'));
     }
     public function show($id)
     {
         $order = Order::with('orderProducts.product')->findOrFail($id);
-        return view('orderproduct', compact('order'));
+        return view('owner.orderproduct', compact('order'));
     }
 
     public function destroy($id)
     {
         $order = Order::findOrFail($id);
         $order->delete();
-        return redirect()->route('orders.index')->with('success', 'Order deleted successfully!');
+        return redirect()->route('ordersOwner.index')->with('success', 'Order deleted successfully!');
     }
 
     public function receipt(Order $order)
